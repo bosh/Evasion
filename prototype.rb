@@ -56,21 +56,21 @@ class Evasion
 		end
 	end
 
-	def change_wall(action, id, x, y) #True if wall created or deleted correctly
-		if data[:action] == :place
-			place_wall!(id, x, y)
-		elsif data[:action] == :remove
+	def change_wall(action, id, endpoints) #True if wall created or deleted correctly
+		if action == :place
+			place_wall!(id, endpoints)
+		elsif action == :remove
 			remove_wall!(id)
 		else
 			false
 		end
 	end
 
-	def place_wall!(id, x, y) #True if wall is created
-		wall = Wall.new(data)
+	def place_wall!(id, endpoints) #True if wall is created
+		wall = Wall.new(id, endpoints)
 		if can_place_wall? wall
 			@walls << wall
-			wall.points.each{|point| @board[point[:y]][point[:x]] = :wall }
+			wall.all_points.each{|point| @board[point[:y]][point[:x]] = :wall }
 			true
 		else
 			false
@@ -78,9 +78,8 @@ class Evasion
 	end
 
 	def can_place_wall?(wall)
-		wall.points.each do |point|
-			return false if occupied?(point[:x], point[:x])
-		end
+		return false if @walls.size > $wall_max
+		wall.points.each{|point| return false if occupied?(point[:x], point[:x]) }
 		true
 	end
 
@@ -108,6 +107,10 @@ class Evasion
 			#TODO
 			false
 		end
+	end
+
+	def state
+		"#{@current_turn}: #{@current_player.to_s}\nHunter: #{@hunter.to_s}\nPrey: #{@prey.to_s}\n#{@walls.map(&:to_s).join(" ")}"
 	end
 end
 
@@ -138,24 +141,6 @@ class Player
 	def place_at(x, y)
 		@x = x
 		@y = y
-	end
-
-	def move
-		bounce! until !will_bounce?
-		case @direction
-			when :NW
-				@x -= 1
-				@y -= 1
-			when :NE
-				@x += 1
-				@y -= 1
-			when :SE
-				@x += 1
-				@y += 1
-			when :SW
-				@x -= 1
-				@y += 1
-		end
 	end
 
 	def bounce!	#Complete direction flip if hitting a corner, else reflection
@@ -226,6 +211,10 @@ class Player
 			false
 		end
 	end
+
+	def to_s
+		"(#{@x},#{@y}) #{@cooldown}"
+	end
 end
 
 class Hunter < Player
@@ -240,13 +229,32 @@ class Hunter < Player
 			@cooldown -= 1
 		else
 			command = get_input
-			if $game.change_wall(command[:action], command[:id], command[:x], command[:y])
+			if $game.change_wall(command[:action], command[:id], command[:points])
 				@cooldown = $wall_cooldown
+			else
+				#TODO failed action case
 			end
 		end
-		move
+		move!
 	end
 
+	def move!
+		bounce! until !will_bounce?
+		case @direction
+			when :NW
+				@x -= 1
+				@y -= 1
+			when :NE
+				@x += 1
+				@y -= 1
+			when :SE
+				@x += 1
+				@y += 1
+			when :SW
+				@x -= 1
+				@y += 1
+		end
+	end
 end
 
 class Prey < Player
@@ -256,7 +264,7 @@ class Prey < Player
 	end
 
 	def get_input
-		#TODO read until a valid move is sent
+		#TODO read until a parseable move is sent
 	end
 
 	def take_turn
@@ -266,6 +274,8 @@ class Prey < Player
 			command = get_input
 			if $game.occupied?(command[:x], command[:y])
 				#TODO invalid move case
+			elsif (command[:x] - @x).abs > 1 || (command[:y] - @y).abs > 1
+				#TODO too large a move case
 			else
 				place_at(command[:x], command[:y])
 			end
@@ -273,8 +283,42 @@ class Prey < Player
 	end
 end
 
+class Wall
+	attr_accessor :id, :points, :orientation
+	def initialize(id, points)
+		if points[0][:x] == points[1][:x]
+			@points = points
+			@orientation = :vertical
+		elsif points[0][:y] == points[1][:y]
+			@points = points
+			@orientation = :horizontal
+		else
+			#TODO non-flat wall sent
+		end
+	end
+
+	def all_points
+		case @orientation
+		when :vertical
+			x = @points[0][:x]
+			ys = [@points[0][:y],@points[1][:y]]
+			(ys.min..ys.max).map{|y| {:x => x, :y => y}}
+		when :horizontal
+			xs = [@points[0][:x],@points[1][:x]]
+			y = @points[0][:y]
+			(xs.min..xs.max).map{|x| {:x => x, :y => y}}
+		end
+	end
+
+	def to_s
+		"[" + @id.to_s + " " + @points.map{|p| "(#{p[:x]}#{p[:y]})"}.join(", ") + "]"
+	end
+end
+
 ### Game execution ###
 
+$boundaries = { :x => { :min => 0, :max => 499 },
+				:y => { :min => 0, :max => 499 } }
 $wall_cooldown = 10
 $wall_max = 6
 $port = 23000
