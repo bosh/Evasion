@@ -1,5 +1,5 @@
 require 'socket'               # Get sockets from stdlib
-server = TCPServer.open(20000)  # Socket to listen on port 2000
+server = TCPServer.open(23000)  # Socket to listen on port 2000
 
 clients = []
 clients << hunter = server.accept       # Wait for a client to connect
