@@ -1,45 +1,59 @@
+require 'socket'
+
 class Evasion
 	attr_accessor :server, :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn
 	def initialize
-		start_server
+		start_server!
 		setup_board!
 		setup_players!
 		@board_history = []
 		@walls = []
 	end
 
-	def start_server
-		#TODO open server at $port
+	### Methods called by the game setting itself up or by .play
+
+	def start_server!
+		@server = TCPServer.open($port)
 	end
 
 	def setup_board!
-		@board = Array.new(500){ Array.new(500) {:empty} }
+		@board = Array.new($dimensions[:y]){ Array.new($dimensions[:x]) {:empty} } #Remember, this is rows of Y, columns of X, thus ary[y][x]
 	end
 
 	def setup_players!
-		@hunter = Hunter.new
-		@prey = Prey.new
-	end
-
-	def cleanup_players!
-		@hunter.disconnect
-		@prey.disconnect
+		@hunter = Hunter.new(self, @server.accept)
+		@prey = Prey.new(self, @server.accept)
 	end
 
 	def play
 		@current_turn = 0
+		@current_player = @hunter
+		players.each{|p| p.respond(game_parameters)}
 		until is_game_over?
 			@current_player.take_turn
 			advance_turn!
 		end
-		if won_by?(:hunter)
-			@hunter.respond("CAUGHT: #{@current_turn}")
-			@prey.respond("CAUGHT: #{@current_turn}")
-		elsif won_by?(:prey)
-			@hunter.respond("ESCAPED: #{@current_turn}")
-			@prey.respond("ESCAPED: #{@current_turn}")
+		report_winner
+		cleanup_players!
+	end
+
+	def game_parameters
+		"(#{$dimensions[:x]}, #{$dimensions[:y]}) #{$wall_max}, #{$cooldown[:hunter]}, #{$cooldown[:prey]}"
+	end
+
+	def is_game_over?
+		won_by?(:hunter) || won_by?(:prey)
+	end
+
+	def won_by?(player)
+		case player
+		when :hunter
+			#TODO
+			false
+		when :prey
+			#TODO
+			false
 		end
-		cleanup_players!		
 	end
 
 	def advance_turn!
@@ -48,8 +62,28 @@ class Evasion
 		@current_turn += 1
 	end
 
+	def report_winner
+		if won_by?(:hunter)
+			@hunter.respond("CAUGHT: #{@current_turn}")
+			@prey.respond("CAUGHT: #{@current_turn}")
+		elsif won_by?(:prey)
+			@hunter.respond("ESCAPED: #{@current_turn}")
+			@prey.respond("ESCAPED: #{@current_turn}")
+		end
+	end
+
+	def cleanup_players!
+		players.each{|p| p.disconnect}
+	end
+
+	def players
+		[@hunter, @prey]
+	end
+
+	### Methods called by players on their @game ###
+
 	def occupied?(x,y) #Returns true if the coordinate is in bounds and is empty
-		if ($boundaries[:x][:min]..$boundaries[:x][:max]).include? x && ($boundaries[:y][:min]..$boundaries[:y][:max]).include? y
+		if (0...$dimensions[:x]).include?(x) && (0...$dimensions[:y]).include?(y)
 			@board[y][x] == :empty
 		else
 			false
@@ -79,7 +113,7 @@ class Evasion
 
 	def can_place_wall?(wall)
 		return false if @walls.size > $wall_max
-		wall.points.each{|point| return false if occupied?(point[:x], point[:x]) }
+		wall.points.each{|point| return false if occupied?(point[:x], point[:y]) }
 		true
 	end
 
@@ -94,40 +128,39 @@ class Evasion
 		end
 	end
 
-	def is_game_over?
-		won_by?(:hunter) || won_by?(:prey)
-	end
-
-	def won_by?(player)
-		case player
-		when :hunter
-			#TODO
-			false
-		when :prey
-			#TODO
-			false
-		end
-	end
-
 	def state
 		"#{@current_turn}: #{@current_player.to_s}\nHunter: #{@hunter.to_s}\nPrey: #{@prey.to_s}\n#{@walls.map(&:to_s).join(" ")}"
 	end
 end
 
 class Player
-	attr_accessor :x, :y, :direction, :cooldown, :connection
-	def initialize(x, y)
-		@connection = connect
+	@@bounce_results = {	:NW => { :vertical => :SW, :horizontal => :NE, :corner => :SE },
+							:NE => { :vertical => :SE, :horizontal => :NW, :corner => :SW },
+							:SW => { :vertical => :NW, :horizontal => :SE, :corner => :NE },
+							:SE => { :vertical => :NE, :horizontal => :SW, :corner => :NW } }
+
+	@@target_coords = {	#Directions for hunter and prey possible movements
+							:NW => { :dx =>	-1, :dy => -1 },
+							:NE => { :dx =>	+1, :dy => -1 },
+							:SW => { :dx =>	-1, :dy => +1 },
+							:SE => { :dx =>	+1, :dy => +1 },
+							#Directions for prey-possible movements
+							:N => { :dx =>	+0, :dy => -1 },
+							:S => { :dx =>	+0, :dy => +1 },
+							:E => { :dx =>	+1, :dy => +0 },
+							:W => { :dx =>	-1, :dy => +0 } }
+
+	attr_accessor :x, :y, :direction, :cooldown, :connection, :username, :game
+
+	def initialize(connection, game, x, y)
+		@game = game
+		@connection = connection
 		place_at(x, y)
 		@cooldown = 0
 	end
 
-	def connect
-		#TODO wait for first connection
-	end
-
 	def disconnect
-		#TODO connection.close
+		@connection.close
 	end
 
 	def get_input
@@ -144,84 +177,44 @@ class Player
 	end
 
 	def bounce!	#Complete direction flip if hitting a corner, else reflection
-		bounce_results = {
-			:NW => { :top =>	:SW, :left 	=> :NE, :corner => :SE },
-			:NE => { :top =>	:SE, :right => :NW, :corner => :SW },
-			:SW => { :bottom => :NW, :left 	=> :SE, :corner => :NE },
-			:SE => { :bottom => :NE, :right => :SW, :corner => :NW }
-		}
-		@direction = bounce_results[@direction][bounce_direction]
+		@direction = @@bounce_results[@direction][bounce_type]
 	end
 
 	def will_bounce?
-		bounce_direction
+		bounce_type
 	end
 
-	def bounce_direction #Allows a player to squeeze through a diagonal space
-		case @direction
-		when :NW
-			if $game.occupied?(@x - 1, @y - 1)
-				if $game.occupied?(@x - 1, @y)
-					:left
-				elsif $game.occupied?(@x, @y - 1)
-					:top
-				else
-					:corner
-				end
-			else
-				false
+	def bounce_type #Allows a player to squeeze through a diagonal space
+		dx = @@target_coords[@direction][:dx]
+		dy = @@target_coords[@direction][:dy]
+		if @game.occupied?(@x + dx, @y + dy)
+			top_bottom = @game.occupied?(@x, @y + dy) #Detect for collision in N/S direction of movement
+			left_right = @game.occupied?(@x + dx, @y) #Same for E/W
+			if top_bottom && left_right #Both are collisions
+				:corner
+			elsif top_bottom && !left_right #Only vertical movement is collision
+				:vertical
+			elsif left_right && !top_bottom #Only horizontal movement is collision
+				:horizontal
+			else #Only the actual move itself is a collision
+				:corner
 			end
-		when :NE
-			if $game.occupied?(@x + 1, @y - 1)
-				if $game.occupied?(@x + 1, @y)
-					:right
-				elsif $game.occupied?(@x, @y - 1)
-					:top
-				else
-					:corner
-				end
-			else
-				false
-			end
-		when :SE
-			if $game.occupied?(@x + 1, @y + 1)
-				if $game.occupied?(@x + 1, @y)
-					:right
-				elsif $game.occupied?(@x, @y + 1)
-					:bottom
-				else
-					:corner
-				end
-			else
-				false
-			end
-		when :SW
-			if $game.occupied?(@x - 1, @y + 1)
-				if $game.occupied?(@x - 1, @y)
-					:left
-				elsif $game.occupied?(@x, @y + 1)
-					:bottom
-				else
-					:corner
-				end
-			else
-				false
-			end
-		else
+		else #Original movement was fine
 			false
 		end
-	end
-
-	def to_s
-		"(#{@x},#{@y}) #{@cooldown}"
 	end
 end
 
 class Hunter < Player
 	attr_accessor :cooldown
-	def initialize
-		super(0,0)
+	def initialize(game, connection)
+		super(game, connection, 0,0)
+		respond("ACCEPTED HUNTER")
 		@direction = :SE
+	end
+
+	def to_s
+		#TODO
 	end
 
 	def take_turn
@@ -258,9 +251,14 @@ class Hunter < Player
 end
 
 class Prey < Player
-	def initialize
-		super(330,200)
+	def initialize(game, connection)
+		super(game, connection, 330,200)
+		respond("ACCEPTED PREY")
 		@direction = nil
+	end
+
+	def to_s
+		#TODO
 	end
 
 	def get_input
@@ -317,9 +315,8 @@ end
 
 ### Game execution ###
 
-$boundaries = { :x => { :min => 0, :max => 499 },
-				:y => { :min => 0, :max => 499 } }
-$wall_cooldown = 10
+$dimensions = { :x => 500, :y => 500 }
+$cooldown = { :hunter => 25, :prey => 1}
 $wall_max = 6
 $port = 23000
 $game = Evasion.new

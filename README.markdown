@@ -15,7 +15,8 @@ To join a game, send the message
 	JOIN _USERNAME_
 where _USERNAME_ is any string < 40 characters containing no whitespace
 
-The hunter is the first to join a game, the prey second
+The hunter is the first to join a game, the prey second.
+
 Upon joining a game, you will be welcomed with the message
 
 	ACCEPTED _TYPE_
