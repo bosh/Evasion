@@ -118,11 +118,6 @@ class Evasion
 		points
 	end
 
-	def players_surrounded?
-		#TODO add checking to make sure one player can reach the other
-		false
-	end
-
 	def advance_turn!
 		board_history << @board.clone
 		@current_player = (@current_player == hunter ? @prey : @hunter)
@@ -147,15 +142,15 @@ class Evasion
 		[@hunter, @prey]
 	end
 
-	def occupied?(x,y) #Returns true if the coordinate is in bounds and is empty
+	def occupied?(x,y) #Returns true if the coordinate is in bounds and is occupied
 		if (0...$dimensions[:x]).include?(x) && (0...$dimensions[:y]).include?(y)
-			@board[y][x] == :empty
+			@board[y][x] == :wall
 		else
-			false
+			true
 		end
 	end
 
-	### Methods called by players on their @game ###
+	### Methods called by wall interactions ###
 
 	def change_wall(action, id, endpoints) #True if wall created or deleted correctly
 		if action == :place
@@ -231,12 +226,12 @@ class Player
 		{:x => @x, :y => @y}
 	end
 
-	def get_input
-		#TODO connection.gets until something interesting (so you can always assume a valid return from get_input)
+	def read
+		@connection.readline
 	end
 
 	def write(text)
-		#TODO connection.write(text)
+		@connection.puts(text)
 	end
 
 	def place_at(x, y)
@@ -285,12 +280,16 @@ class Hunter < Player
 		"H(#{@x}, #{@y}, #{@cooldown}, #{@direction})"
 	end
 
+	def get_command
+		read #TODO
+	end
+
 	def take_turn
 		if @cooldown > 0
 			@cooldown -= 1
 		else
 			start_time = Time.now
-			command = get_input
+			command = get_command
 			@time_taken += Time.now - start_time
 			if @game.change_wall(command[:action], command[:id], command[:points])
 				@cooldown = $wall_cooldown
@@ -321,19 +320,21 @@ class Prey < Player
 		"P(#{@x}, #{@y}, #{@cooldown})"
 	end
 
-	def get_input
-		#TODO read until a parseable move is sent
+	def get_command
+		read #TODO
 	end
 
 	def take_turn
 		if @cooldown > 0
 			@cooldown -= 1
 		else
-			command = get_input
+			start_time = Time.now
+			command = get_command
+			@time_taken += Time.now - start_time
 			if @game.occupied?(command[:x], command[:y])
-				#TODO invalid move case
+				false #TODO invalid move case
 			elsif (command[:x] - @x).abs > 1 || (command[:y] - @y).abs > 1
-				#TODO too large a move case
+				false #TODO too large a move case
 			else
 				place_at(command[:x], command[:y])
 			end
@@ -351,7 +352,7 @@ class Wall
 			@points = points
 			@orientation = :horizontal
 		else
-			#TODO non-flat wall sent
+			false #TODO non-flat wall sent
 		end
 	end
 
