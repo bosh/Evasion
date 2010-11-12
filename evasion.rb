@@ -30,6 +30,7 @@ class Evasion
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
+			puts @current_turn
 			@current_player.take_turn
 			advance_turn!
 		end
@@ -80,7 +81,7 @@ class Evasion
 
 		distance = 0
 		until distance > $capture_distance || current_set.empty?
-			found_set = (current_set.map{|c| collect_adjacent_points(c)} - checked_set) - current_set
+			found_set = ((current_set.map{|c| collect_adjacent_points(c)}.flatten - checked_set) - current_set)
 			checked_set += current_set
 			current_set = found_set
 			distance += 1
@@ -96,12 +97,12 @@ class Evasion
 		checked_set = []
 		current_set = [@prey.coords]
 		until current_set.empty? #Expand until there is nowhere to expand into
-			found_set = (current_set.map{|c| collect_adjacent_points(c)} - checked_set) - current_set
-			return false if found_set.include? @prey.coords
+			found_set = ((current_set.map{|c| collect_adjacent_points(c)}.flatten - checked_set) - current_set)
+			return false if found_set.include? @hunter.coords
 			checked_set += current_set
 			current_set = found_set
 		end
-		final_set.include? @prey.coords #Redundant with the earlier return false, but done so in case my expand-from-hunter algorithm has a bug
+		checked_set.include? @hunter.coords #Redundant with the earlier return false, but done so in case my expand-from-hunter algorithm has a bug
 	end
 
 	def collect_adjacent_points(coords)
@@ -110,6 +111,8 @@ class Evasion
 		y = coords[:y]
 		x_range = ([0, x-1].max..[$dimensions[:x], x+1].min)
 		y_range = ([0, y-1].max..[$dimensions[:y], y+1].min)
+		puts x_range
+		puts y_range
 		x_range.each do |i|
 			y_range.each do |j|
 				points << {:x => i, :y => j} unless ( (i == x && j == y ) || occupied?(i, j))
@@ -210,7 +213,7 @@ class Player
 
 	attr_accessor :x, :y, :cooldown, :connection, :username, :game, :time_taken
 
-	def initialize(connection, game, x, y)
+	def initialize(game, connection, x, y)
 		@game = game
 		@connection = connection
 		place_at(x, y)
