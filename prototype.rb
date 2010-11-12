@@ -281,7 +281,22 @@ class Hunter < Player
 	end
 
 	def get_command
-		read #TODO
+		text = read.chomp
+		command = {}
+		if text =~ /PASS/i
+			command[:pass] = true
+		elsif text =~ /ADD\W+(\d+)\W+\((.*?)\)W+\((.*?)\)/i
+			command[:action] = :add
+			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
+			command[:points] = [$2,$3].collect do |p|
+				x,y = p.split(",").map(&:to_i)
+				{:x => x, :y => y}
+			end
+		elsif text =~ /REMOVE\W+(\d+)/
+			command[:action] = :remove
+			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
+		end
+		command
 	end
 
 	def take_turn
@@ -291,21 +306,20 @@ class Hunter < Player
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
-			if @game.change_wall(command[:action], command[:id], command[:points])
+			if !command[:pass]
 				@cooldown = $wall_cooldown
+				@game.change_wall(command[:action], command[:id], command[:points])
 			else
-				#TODO failed action case
+				#FUTURE passing case
 			end
 		end
-		move!
+		move! #Note: Moves in both cases, and move takes place after all wall changes in a turn
 	end
 
 	def move!
-		bounce! until !will_bounce?
-		dx = @game.target_coords[@direction][:dx]
-		dy = @game.target_coords[@direction][:dy]
-		@x += dx
-		@y += dy
+		bounce! until !will_bounce? #TODO add surroundedness checking
+		@x += @game.target_coords[@direction][:dx]
+		@y += @game.target_coords[@direction][:dy]
 	end
 end
 
@@ -313,7 +327,6 @@ class Prey < Player
 	def initialize(game, connection)
 		super(game, connection, 330,200)
 		write("ACCEPTED PREY")
-		@direction = nil
 	end
 
 	def to_s
@@ -321,7 +334,19 @@ class Prey < Player
 	end
 
 	def get_command
-		read #TODO
+		text = read.chomp
+		command = {}
+		if text =~ /PASS/i
+			command[:pass] = true
+		elsif text =~ /\((\d+),\W+(\d+)\)/i
+			command[:x] = $1.to_i
+			command[:y] = $2.to_i
+		elsif text =~ /([NSEW]|[NS][EW])/i
+			direction = $1.to_sym
+			command[:x] = @x + @game.target_coords[direction][:dx]
+			command[:y] = @y + @game.target_coords[direction][:dy]
+		end
+		command
 	end
 
 	def take_turn
@@ -331,12 +356,17 @@ class Prey < Player
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
-			if @game.occupied?(command[:x], command[:y])
-				false #TODO invalid move case
-			elsif (command[:x] - @x).abs > 1 || (command[:y] - @y).abs > 1
-				false #TODO too large a move case
+			if !command[:pass]
+				@cooldown = $cooldown[:prey]
+				if @game.occupied?(command[:x], command[:y])
+					false #FUTURE invalid move case
+				elsif (command[:x] - @x).abs > 1 || (command[:y] - @y).abs > 1
+					false #FUTURE too large a move case
+				else
+					place_at(command[:x], command[:y])
+				end
 			else
-				place_at(command[:x], command[:y])
+				#FUTURE passing case
 			end
 		end
 	end
@@ -352,7 +382,7 @@ class Wall
 			@points = points
 			@orientation = :horizontal
 		else
-			false #TODO non-flat wall sent
+			false #FUTURE non-flat wall sent
 		end
 	end
 
