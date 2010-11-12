@@ -41,6 +41,14 @@ class Evasion
 		"(#{$dimensions[:x]}, #{$dimensions[:y]}) #{$wall_max}, #{$cooldown[:hunter]}, #{$cooldown[:prey]}"
 	end
 
+	def game_state
+		"YOURTURN #{current_round} #{@hunter.to_state}, #{@prey.to_state}, W[{@walls.map{|w| w.to_state}.join(", ")}]"
+	end
+
+	def current_round
+		(@current_turn / 2).floor
+	end
+
 	def is_game_over?
 		won_by?(:hunter) || won_by?(:prey)
 	end
@@ -127,30 +135,26 @@ class Evasion
 			false
 		end
 	end
-
-	def state
-		"#{@current_turn}: #{@current_player.to_s}\nHunter: #{@hunter.to_s}\nPrey: #{@prey.to_s}\n#{@walls.map(&:to_s).join(" ")}"
-	end
 end
 
 class Player
-	@@bounce_results = {	:NW => { :vertical => :SW, :horizontal => :NE, :corner => :SE },
-							:NE => { :vertical => :SE, :horizontal => :NW, :corner => :SW },
-							:SW => { :vertical => :NW, :horizontal => :SE, :corner => :NE },
-							:SE => { :vertical => :NE, :horizontal => :SW, :corner => :NW } }
+	@@bounce_results = {:NW => { :vertical => :SW, :horizontal => :NE, :corner => :SE },
+						:NE => { :vertical => :SE, :horizontal => :NW, :corner => :SW },
+						:SW => { :vertical => :NW, :horizontal => :SE, :corner => :NE },
+						:SE => { :vertical => :NE, :horizontal => :SW, :corner => :NW } }
 
 	@@target_coords = {	#Directions for hunter and prey possible movements
-							:NW => { :dx =>	-1, :dy => -1 },
-							:NE => { :dx =>	+1, :dy => -1 },
-							:SW => { :dx =>	-1, :dy => +1 },
-							:SE => { :dx =>	+1, :dy => +1 },
-							#Directions for prey-possible movements
-							:N => { :dx =>	+0, :dy => -1 },
-							:S => { :dx =>	+0, :dy => +1 },
-							:E => { :dx =>	+1, :dy => +0 },
-							:W => { :dx =>	-1, :dy => +0 } }
+						:NW => { :dx =>	-1, :dy => -1 },
+						:NE => { :dx =>	+1, :dy => -1 },
+						:SW => { :dx =>	-1, :dy => +1 },
+						:SE => { :dx =>	+1, :dy => +1 },
+						#Directions for prey-possible movements
+						:N => { :dx =>	+0, :dy => -1 },
+						:S => { :dx =>	+0, :dy => +1 },
+						:E => { :dx =>	+1, :dy => +0 },
+						:W => { :dx =>	-1, :dy => +0 } }
 
-	attr_accessor :x, :y, :direction, :cooldown, :connection, :username, :game
+	attr_accessor :x, :y, :cooldown, :connection, :username, :game
 
 	def initialize(connection, game, x, y)
 		@game = game
@@ -206,7 +210,7 @@ class Player
 end
 
 class Hunter < Player
-	attr_accessor :cooldown
+	attr_accessor :direction
 	def initialize(game, connection)
 		super(game, connection, 0,0)
 		respond("ACCEPTED HUNTER")
@@ -214,7 +218,7 @@ class Hunter < Player
 	end
 
 	def to_s
-		#TODO
+		"H(#{@x}, #{@y}, #{@cooldown}, #{@direction})"
 	end
 
 	def take_turn
@@ -222,7 +226,7 @@ class Hunter < Player
 			@cooldown -= 1
 		else
 			command = get_input
-			if $game.change_wall(command[:action], command[:id], command[:points])
+			if @game.change_wall(command[:action], command[:id], command[:points])
 				@cooldown = $wall_cooldown
 			else
 				#TODO failed action case
@@ -233,20 +237,10 @@ class Hunter < Player
 
 	def move!
 		bounce! until !will_bounce?
-		case @direction
-			when :NW
-				@x -= 1
-				@y -= 1
-			when :NE
-				@x += 1
-				@y -= 1
-			when :SE
-				@x += 1
-				@y += 1
-			when :SW
-				@x -= 1
-				@y += 1
-		end
+		dx = @game.target_coords[@direction][:dx]]
+		dy = @game.target_coords[@direction][:dy]]
+		@x += dx
+		@y += dy
 	end
 end
 
@@ -258,7 +252,7 @@ class Prey < Player
 	end
 
 	def to_s
-		#TODO
+		"P(#{@x}, #{@y}, #{@cooldown})"
 	end
 
 	def get_input
@@ -270,7 +264,7 @@ class Prey < Player
 			@cooldown -= 1
 		else
 			command = get_input
-			if $game.occupied?(command[:x], command[:y])
+			if @game.occupied?(command[:x], command[:y])
 				#TODO invalid move case
 			elsif (command[:x] - @x).abs > 1 || (command[:y] - @y).abs > 1
 				#TODO too large a move case
@@ -308,8 +302,8 @@ class Wall
 		end
 	end
 
-	def to_s
-		"[" + @id.to_s + " " + @points.map{|p| "(#{p[:x]}#{p[:y]})"}.join(", ") + "]"
+	def to_state
+		"(#{[@id, @points[0][:x], @points[0][:y], @points[1][:x], @points[1][:y]].join(", ")})"
 	end
 end
 
@@ -319,5 +313,5 @@ $dimensions = { :x => 500, :y => 500 }
 $cooldown = { :hunter => 25, :prey => 1}
 $wall_max = 6
 $port = 23000
-$game = Evasion.new
-$game.play
+game = Evasion.new
+game.play
