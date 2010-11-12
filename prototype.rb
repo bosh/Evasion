@@ -28,7 +28,7 @@ class Evasion
 	def play
 		@current_turn = 0
 		@current_player = @hunter
-		players.each{|p| p.respond(game_parameters)}
+		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
 			@current_player.take_turn
 			advance_turn!
@@ -131,11 +131,11 @@ class Evasion
 
 	def report_winner
 		if reason = won_by?(:hunter)
-			@hunter.respond("GAMEOVER #{current_round} WINNER HUNTER #{reason}")
-			@prey.respond("GAMEOVER #{current_round} LOSER PREY #{reason}")
+			@hunter.write("GAMEOVER #{current_round} WINNER HUNTER #{reason}")
+			@prey.write("GAMEOVER #{current_round} LOSER PREY #{reason}")
 		elsif reason = won_by?(:prey)
-			@hunter.respond("GAMEOVER #{current_round} LOSER HUNTER #{reason}")
-			@prey.respond("GAMEOVER #{current_round} WINNER PREY #{reason}")
+			@hunter.write("GAMEOVER #{current_round} LOSER HUNTER #{reason}")
+			@prey.write("GAMEOVER #{current_round} WINNER PREY #{reason}")
 		end
 	end
 
@@ -235,7 +235,7 @@ class Player
 		#TODO connection.gets until something interesting (so you can always assume a valid return from get_input)
 	end
 
-	def respond(text)
+	def write(text)
 		#TODO connection.write(text)
 	end
 
@@ -277,7 +277,7 @@ class Hunter < Player
 	attr_accessor :direction
 	def initialize(game, connection)
 		super(game, connection, 0,0)
-		respond("ACCEPTED HUNTER")
+		write("ACCEPTED HUNTER")
 		@direction = :SE
 	end
 
@@ -313,7 +313,7 @@ end
 class Prey < Player
 	def initialize(game, connection)
 		super(game, connection, 330,200)
-		respond("ACCEPTED PREY")
+		write("ACCEPTED PREY")
 		@direction = nil
 	end
 
