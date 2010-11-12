@@ -53,15 +53,62 @@ class Evasion
 		won_by?(:hunter) || won_by?(:prey)
 	end
 
-	def won_by?(player)
+	def won_by?(player) #Returns false or string with reason
 		case player
 		when :hunter
-			#TODO
-			false
+			if players_within_distance?
+				"CAPTURE"
+			elsif @prey.time_taken > $time_limit
+				"TIMEOUT"
+			else
+				false
+			end
 		when :prey
-			#TODO
-			false
+			if players_surrounded?
+				"ESCAPE"
+			elsif @hunter.time_taken > $time_limit
+				"TIMEOUT"
+			else
+				false
+			end
 		end
+	end
+
+	def players_within_distance?
+		checked_set = []
+		current_set = [@hunter.coords]
+
+		distance = 0
+		until distance > $capture_distance || current_set.empty?
+			found_set = (current_set.map{|c| collect_adjacent_points(c)} - checked_set) - current_set
+			checked_set += current_set
+			current_set = found_set
+			distance += 1
+		end
+
+		h_x = @hunter.x
+		h_y = @hunter.y
+		final_set = (checked_set + current_set).reject{|p| ((p[:x] - h_x)**2 + (p[:y] - h_y)**2)**(0.5) > $capture_distance}
+		final_set.include? @prey.coords
+	end
+
+	def collect_adjacent_points(coords)
+		points = []
+		x = coords[:x]
+		y = coords[:y]
+		x_range = ([0, x-1].max..[$dimensions[:x], x+1].min)
+		y_range = ([0, y-1].max..[$dimensions[:y], y+1].min)
+		x_range.each do |i|
+			y_range.each do |j|
+				points << {:x => i, :y => j} unless ( (i == x && j == y ) || occupied?(i, j))
+			end
+		end
+		points
+	end
+
+	def players_surrounded?
+		#TODO add checking to make sure one player can reach the other
+		false
 	end
 
 	def advance_turn!
@@ -71,12 +118,12 @@ class Evasion
 	end
 
 	def report_winner
-		if won_by?(:hunter)
-			@hunter.respond("CAUGHT: #{@current_turn}")
-			@prey.respond("CAUGHT: #{@current_turn}")
-		elsif won_by?(:prey)
-			@hunter.respond("ESCAPED: #{@current_turn}")
-			@prey.respond("ESCAPED: #{@current_turn}")
+		if reason = won_by?(:hunter)
+			@hunter.respond("GAMEOVER #{current_round} WINNER HUNTER #{reason}")
+			@prey.respond("GAMEOVER #{current_round} LOSER PREY #{reason}")
+		elsif reason = won_by?(:prey)
+			@hunter.respond("GAMEOVER #{current_round} LOSER HUNTER #{reason}")
+			@prey.respond("GAMEOVER #{current_round} WINNER PREY #{reason}")
 		end
 	end
 
@@ -88,8 +135,6 @@ class Evasion
 		[@hunter, @prey]
 	end
 
-	### Methods called by players on their @game ###
-
 	def occupied?(x,y) #Returns true if the coordinate is in bounds and is empty
 		if (0...$dimensions[:x]).include?(x) && (0...$dimensions[:y]).include?(y)
 			@board[y][x] == :empty
@@ -97,6 +142,8 @@ class Evasion
 			false
 		end
 	end
+
+	### Methods called by players on their @game ###
 
 	def change_wall(action, id, endpoints) #True if wall created or deleted correctly
 		if action == :place
@@ -165,6 +212,10 @@ class Player
 
 	def disconnect
 		@connection.close
+	end
+
+	def coords
+		{:x => @x, :y => @y}
 	end
 
 	def get_input
@@ -308,7 +359,8 @@ class Wall
 end
 
 ### Game execution ###
-
+$time_limit = 120
+$capture_distance = 4
 $dimensions = { :x => 500, :y => 500 }
 $cooldown = { :hunter => 25, :prey => 1}
 $wall_max = 6
