@@ -92,6 +92,18 @@ class Evasion
 		final_set.include? @prey.coords
 	end
 
+	def players_surrounded?
+		checked_set = []
+		current_set = [@prey.coords]
+		until current_set.empty? #Expand until there is nowhere to expand into
+			found_set = (current_set.map{|c| collect_adjacent_points(c)} - checked_set) - current_set
+			return false if found_set.include? @prey.coords
+			checked_set += current_set
+			current_set = found_set
+		end
+		final_set.include? @prey.coords #Redundant with the earlier return false, but done so in case my expand-from-hunter algorithm has a bug
+	end
+
 	def collect_adjacent_points(coords)
 		points = []
 		x = coords[:x]
@@ -201,13 +213,14 @@ class Player
 						:E => { :dx =>	+1, :dy => +0 },
 						:W => { :dx =>	-1, :dy => +0 } }
 
-	attr_accessor :x, :y, :cooldown, :connection, :username, :game
+	attr_accessor :x, :y, :cooldown, :connection, :username, :game, :time_taken
 
 	def initialize(connection, game, x, y)
 		@game = game
 		@connection = connection
 		place_at(x, y)
 		@cooldown = 0
+		@time_taken = 0
 	end
 
 	def disconnect
@@ -276,7 +289,9 @@ class Hunter < Player
 		if @cooldown > 0
 			@cooldown -= 1
 		else
+			start_time = Time.now
 			command = get_input
+			@time_taken += Time.now - start_time
 			if @game.change_wall(command[:action], command[:id], command[:points])
 				@cooldown = $wall_cooldown
 			else
