@@ -42,7 +42,7 @@ class Evasion
 	end
 
 	def game_state
-		"YOURTURN #{current_round} #{@hunter.to_state}, #{@prey.to_state}, W[{@walls.map{|w| w.to_state}.join(", ")}]"
+		"YOURTURN #{self.current_round} #{@hunter.to_state}, #{@prey.to_state}, W[#{@walls.map{|w| w.to_state}.join(", ")}]"
 	end
 
 	def current_round
@@ -237,8 +237,8 @@ class Hunter < Player
 
 	def move!
 		bounce! until !will_bounce?
-		dx = @game.target_coords[@direction][:dx]]
-		dy = @game.target_coords[@direction][:dy]]
+		dx = @game.target_coords[@direction][:dx]
+		dy = @game.target_coords[@direction][:dy]
 		@x += dx
 		@y += dy
 	end
