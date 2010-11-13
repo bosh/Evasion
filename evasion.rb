@@ -267,6 +267,7 @@ class Player
 
 	def write(text)
 		@connection.puts(text)
+		puts text
 	end
 
 	def place_at(x, y)
@@ -311,12 +312,13 @@ class Hunter < Player
 		@direction = :SE
 	end
 
-	def to_s
+	def to_state
 		"H(#{@x}, #{@y}, #{@cooldown}, #{@direction})"
 	end
 
 	def get_command
 		text = read.chomp
+		puts text
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
@@ -327,9 +329,11 @@ class Hunter < Player
 				x,y = p.split(",").map(&:to_i)
 				{:x => x, :y => y}
 			end
+			puts "Adding wall: #{command}"
 		elsif text =~ /REMOVE\W+(\d+)/
 			command[:action] = :remove
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
+			puts "Removing wall: #{command}"
 		end
 		command
 	end
@@ -338,9 +342,11 @@ class Hunter < Player
 		if @cooldown > 0
 			@cooldown -= 1
 		else
+			write game.game_state
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
+			puts "Hunter - Time taken: #{@time_taken}"
 			if !command[:pass]
 				@cooldown = $wall_cooldown
 				@game.change_wall(command[:action], command[:id], command[:points])
@@ -353,8 +359,8 @@ class Hunter < Player
 
 	def move!
 		bounce! until !will_bounce? #TODO add surroundedness checking
-		@x += @game.target_coords[@direction][:dx]
-		@y += @game.target_coords[@direction][:dy]
+		@x += @@target_coords[@direction][:dx]
+		@y += @@target_coords[@direction][:dy]
 	end
 end
 
@@ -364,12 +370,13 @@ class Prey < Player
 		write("ACCEPTED PREY")
 	end
 
-	def to_s
+	def to_state
 		"P(#{@x}, #{@y}, #{@cooldown})"
 	end
 
 	def get_command
 		text = read.chomp
+		puts text
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
@@ -388,9 +395,11 @@ class Prey < Player
 		if @cooldown > 0
 			@cooldown -= 1
 		else
+			write game.game_state
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
+			puts "Prey - Time taken: #{@time_taken}"
 			if !command[:pass]
 				@cooldown = $cooldown[:prey]
 				if @game.occupied?(command[:x], command[:y])
