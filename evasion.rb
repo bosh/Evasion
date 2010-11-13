@@ -287,6 +287,7 @@ class Player
 
 	def bounce!	#Complete direction flip if hitting a corner, else reflection
 		@direction = @@bounce_results[@direction][bounce_type]
+		puts "Bouncing #{@direction}"
 	end
 
 	def will_bounce?
@@ -390,7 +391,7 @@ class Prey < Player
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
-		elsif text =~ /\((\d+),\W+(\d+)\)/i
+		elsif text =~ /(\d+),\W+(\d+)/i
 			command[:x] = $1.to_i
 			command[:y] = $2.to_i
 		elsif text =~ /\A([NSEW]|[NS][EW])\z/i
