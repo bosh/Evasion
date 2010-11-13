@@ -88,10 +88,7 @@ class Evasion
 			current_set = found_set
 			distance += 1
 		end
-
-		h_x = @hunter.x
-		h_y = @hunter.y
-		final_set = (checked_set + current_set).reject{|p| ((p[:x] - h_x)**2 + (p[:y] - h_y)**2)**(0.5) > $capture_distance}
+		final_set = (checked_set + current_set).reject{|p| distance(@hunter.coords,p) > $capture_distance}
 		final_set.include? @prey.coords
 	end
 
@@ -108,7 +105,7 @@ class Evasion
 		h_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
 		f_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
 		g_score[start[:y]][start[:x]] = 0
-		h_score[start[:y]][start[:x]] = distance_estimate(start, goal)
+		h_score[start[:y]][start[:x]] = distance(start, goal)
 		f_score[start[:y]][start[:x]] = h_score[start[:y]][start[:x]]
 		until options.empty?
 			scores = options.map{|o| f_score[o[:y]][o[:x]]}
@@ -128,7 +125,7 @@ class Evasion
 				end
 				if tentative_is_better
 					g_score[neighbor[:y]][neighbor[:x]] = tentative_g_score
-					h_score[neighbor[:y]][neighbor[:x]] = distance_estimate(neighbor, goal)
+					h_score[neighbor[:y]][neighbor[:x]] = distance(neighbor, goal)
 					f_score[neighbor[:y]][neighbor[:x]] = g_score[neighbor[:y]][neighbor[:x]] + h_score[neighbor[:y]][neighbor[:x]]
 				end
 			end
@@ -136,7 +133,7 @@ class Evasion
 		false
 	end
 
-	def distance_estimate(start, goal)
+	def distance(start, goal)
 		((start[:x] - goal[:x])**2 + (start[:y] - goal[:y])**2)**0.5
 	end
 
