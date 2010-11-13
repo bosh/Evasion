@@ -1,4 +1,5 @@
 require 'socket'
+Infinity = 1.0/0
 
 class Evasion
 	attr_accessor :server, :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn
@@ -94,15 +95,48 @@ class Evasion
 	end
 
 	def players_surrounded?
-		checked_set = []
-		current_set = [@prey.coords]
-		until current_set.empty? #Expand until there is nowhere to expand into
-			found_set = ((current_set.map{|c| collect_adjacent_points(c)}.flatten - checked_set) - current_set)
-			return false if found_set.include? @hunter.coords
-			checked_set += current_set
-			current_set = found_set
+		return false if @walls.empty?
+		a_star(@prey.coords, @hunter.coords)
+	end
+
+	def a_star(start,goal)
+		checked = []
+		options = [start]
+		path = []
+		g_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
+		h_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
+		f_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
+		g_score[start[:y]][start[:x]] = 0
+		h_score[start[:y]][start[:x]] = distance_estimate(start, goal)
+		f_score[start[:y]][start[:x]] = h_score[start[:y]][start[:x]]
+		until options.empty?
+			scores = options.map{|o| f_score[o[:y]][o[:x]]}
+			curr = options.delete_at scores.index[scores.min]
+			return true if curr == goal
+			checked << curr
+			collect_adjacent_points(curr).each do |neighbor|
+				next if checked.include? neighbor
+				tentative_g_score = g_score[curr] + 1 # 1 == dist_between(curr,neighbor)
+				if !options.include? neighbor
+					options << neighbor
+					tentative_is_better = true
+				elsif tentative_g_score < g_score[neighbor[:y]][neighbor[:x]]
+					tentative_is_better = true
+				else
+					tentative_is_better = false
+				end
+				if tentative_is_better
+					g_score[neighbor[:y]][neighbor[:x]] = tentative_g_score
+					h_score[neighbor[:y]][neighbor[:x]] = distance_estimate(neighbor, goal)
+					f_score[neighbor[:y]][neighbor[:x]] = g_score[neighbor[:y]][neighbor[:x]] + h_score[neighbor[:y]][neighbor[:x]]
+				end
+			end
 		end
-		checked_set.include? @hunter.coords #Redundant with the earlier return false, but done so in case my expand-from-hunter algorithm has a bug
+		false
+	end
+
+	def distance_estimate(start, goal)
+		((start[:x] - goal[:x])**2 + (start[:y] - goal[:y])**2)**0.5
 	end
 
 	def collect_adjacent_points(coords)
@@ -111,8 +145,6 @@ class Evasion
 		y = coords[:y]
 		x_range = ([0, x-1].max..[$dimensions[:x], x+1].min)
 		y_range = ([0, y-1].max..[$dimensions[:y], y+1].min)
-		puts x_range
-		puts y_range
 		x_range.each do |i|
 			y_range.each do |j|
 				points << {:x => i, :y => j} unless ( (i == x && j == y ) || occupied?(i, j))
@@ -274,7 +306,7 @@ end
 class Hunter < Player
 	attr_accessor :direction
 	def initialize(game, connection)
-		super(game, connection, 0,0)
+		super(game, connection, $start_locations[:hunter][:x],$start_locations[:hunter][:y])
 		write("ACCEPTED HUNTER")
 		@direction = :SE
 	end
@@ -328,7 +360,7 @@ end
 
 class Prey < Player
 	def initialize(game, connection)
-		super(game, connection, 330,200)
+		super(game, connection, $start_locations[:prey][:x],$start_locations[:prey][:y])
 		write("ACCEPTED PREY")
 	end
 
@@ -408,6 +440,8 @@ class Wall
 end
 
 ### Game execution ###
+$start_locations = {	:prey =>	{:x => 320,	:y => 200},
+						:hunter =>	{:x => 0,	:y => 0} }
 $time_limit = 120
 $capture_distance = 4
 $dimensions = { :x => 500, :y => 500 }
