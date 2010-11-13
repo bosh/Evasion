@@ -156,7 +156,7 @@ class Evasion
 	### Methods called by wall interactions ###
 
 	def change_wall(action, id, endpoints) #True if wall created or deleted correctly
-		if action == :place
+		if action == :add
 			place_wall!(id, endpoints)
 		elsif action == :remove
 			remove_wall!(id)
