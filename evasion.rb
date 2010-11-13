@@ -322,7 +322,7 @@ class Hunter < Player
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
-		elsif text =~ /ADD\W+(\d+)\W+\((.*?)\)W+\((.*?)\)/i
+		elsif text =~ /ADD\W+(\d+)\W+\((.*?)\),?W+\((.*?)\)/i
 			command[:action] = :add
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
 			command[:points] = [$2,$3].collect do |p|
@@ -348,7 +348,7 @@ class Hunter < Player
 			@time_taken += Time.now - start_time
 			puts "Hunter - Time taken: #{@time_taken}"
 			if !command[:pass]
-				@cooldown = $wall_cooldown
+				@cooldown = $cooldown[:hunter]
 				@game.change_wall(command[:action], command[:id], command[:points])
 			else
 				#FUTURE passing case
@@ -385,8 +385,8 @@ class Prey < Player
 			command[:y] = $2.to_i
 		elsif text =~ /([NSEW]|[NS][EW])/i
 			direction = $1.to_sym
-			command[:x] = @x + @game.target_coords[direction][:dx]
-			command[:y] = @y + @game.target_coords[direction][:dy]
+			command[:x] = @x + @@target_coords[direction][:dx]
+			command[:y] = @y + @@target_coords[direction][:dy]
 		end
 		command
 	end
