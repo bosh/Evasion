@@ -94,10 +94,12 @@ class Evasion
 
 	def players_surrounded?
 		return false if @walls.empty?
-		a_star(@prey.coords, @hunter.coords)
+		a_star(@hunter.coords, @prey.coords)
 	end
 
 	def a_star(start,goal)
+		return false
+		#TODO make this actually work
 		checked = []
 		options = [start]
 		path = []
@@ -105,12 +107,13 @@ class Evasion
 		h_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
 		f_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
 		g_score[start[:y]][start[:x]] = 0
-		h_score[start[:y]][start[:x]] = distance(start, goal)
+		h_score[start[:y]][start[:x]] = distance(start, goal, :diagonal)
 		f_score[start[:y]][start[:x]] = h_score[start[:y]][start[:x]]
 		until options.empty?
-			scores = options.map{|o| f_score[o[:y]][o[:x]]}
-			curr = options.delete_at scores.index(scores.min)
-			return true if curr == goal
+			option_scores = options.map{|o| f_score[o[:y]][o[:x]]}
+			curr = options.delete_at option_scores.index(option_scores.min)
+			puts curr
+			return false if curr == goal
 			checked << curr
 			collect_adjacent_points(curr).each do |neighbor|
 				next if checked.include? neighbor
@@ -130,11 +133,17 @@ class Evasion
 				end
 			end
 		end
-		false
+		true
 	end
 
-	def distance(start, goal)
-		((start[:x] - goal[:x])**2 + (start[:y] - goal[:y])**2)**0.5
+	def distance(start, goal, mode = :euclidean)
+		if mode == :euclidean
+			((start[:x] - goal[:x])**2 + (start[:y] - goal[:y])**2)**0.5
+		elsif mode == :linear
+			(start[:x] - goal[:x]).abs + (start[:y] - goal[:y]).abs
+		elsif mode == :diagonal
+			[(start[:x] - goal[:x]).abs, (start[:y] - goal[:y]).abs].max
+		end
 	end
 
 	def collect_adjacent_points(coords)
@@ -330,11 +339,11 @@ class Hunter < Player
 				x,y = p.split(",").map(&:to_i)
 				{:x => x, :y => y}
 			end
-			puts "Adding wall: #{command}"
+			puts "Adding wall: #{command.inspect}"
 		elsif text =~ /REMOVE\W+(\d+)/
 			command[:action] = :remove
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
-			puts "Removing wall: #{command}"
+			puts "Removing wall: #{command.inspect}"
 		end
 		command
 	end
@@ -420,6 +429,7 @@ end
 class Wall
 	attr_accessor :id, :points, :orientation
 	def initialize(id, points)
+		@id = id.to_i
 		if points[0][:x] == points[1][:x]
 			@points = points
 			@orientation = :vertical
