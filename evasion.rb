@@ -69,12 +69,20 @@ class Evasion
 		when :prey
 			if players_surrounded?
 				"ESCAPE"
+			elsif hunter_trapped?
+				"ESCAPE"
 			elsif @hunter.time_taken > $time_limit
 				"TIMEOUT"
 			else
 				false
 			end
 		end
+	end
+
+	def hunter_trapped?
+		corners = []
+		[-1, +1].each{|dx| [-1, +1].each{|dy| corners << {:x => @hunter.x + dx, :y => @hunter.y + dy} } }
+		!(corners.map{|p| occupied? p}.include? false )
 	end
 
 	def players_within_distance?
