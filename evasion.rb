@@ -34,6 +34,7 @@ class Evasion
 			puts @current_turn
 			@current_player.take_turn
 			advance_turn!
+			puts ""
 		end
 		report_winner
 		cleanup_players!
@@ -103,20 +104,20 @@ class Evasion
 		checked = []
 		options = [start]
 		path = []
-		g_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
-		h_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
-		f_score = Array.new($dimensions[:y], Array.new(:dimensions[:x], Infinity))
+		g_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
+		h_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
+		f_score = Array.new($dimensions[:y], Array.new($dimensions[:x], Infinity))
 		g_score[start[:y]][start[:x]] = 0
 		h_score[start[:y]][start[:x]] = distance_estimate(start, goal)
 		f_score[start[:y]][start[:x]] = h_score[start[:y]][start[:x]]
 		until options.empty?
 			scores = options.map{|o| f_score[o[:y]][o[:x]]}
-			curr = options.delete_at scores.index[scores.min]
+			curr = options.delete_at scores.index(scores.min)
 			return true if curr == goal
 			checked << curr
 			collect_adjacent_points(curr).each do |neighbor|
 				next if checked.include? neighbor
-				tentative_g_score = g_score[curr] + 1 # 1 == dist_between(curr,neighbor)
+				tentative_g_score = g_score[curr[:y]][curr[:x]] + 1 # 1 == dist_between(curr,neighbor)
 				if !options.include? neighbor
 					options << neighbor
 					tentative_is_better = true
@@ -200,10 +201,12 @@ class Evasion
 	def place_wall!(id, endpoints) #True if wall is created
 		wall = Wall.new(id, endpoints)
 		if can_place_wall? wall
+			puts "Wall is placeable, placing #{id}"
 			@walls << wall
 			wall.all_points.each{|point| @board[point[:y]][point[:x]] = :wall }
 			true
 		else
+			puts "Wall was not placeable"
 			false
 		end
 	end
@@ -217,6 +220,7 @@ class Evasion
 	def remove_wall!(id) #True if wall is found for deletion
 		wall = @walls.select{|w| w.id == id}
 		if wall
+			puts "Wall removed: #{id}"
 			wall.points.each{|point| @board[point[:y]][point[:x]] = :empty }
 			@walls.delete(wall)
 			true
@@ -322,7 +326,7 @@ class Hunter < Player
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
-		elsif text =~ /ADD\W+(\d+)\W+\((.*?)\),?W+\((.*?)\)/i
+		elsif text =~ /ADD\W+(\d+)\W+\((.*?)\),?\W+\((.*?)\)/i
 			command[:action] = :add
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
 			command[:points] = [$2,$3].collect do |p|
@@ -383,7 +387,7 @@ class Prey < Player
 		elsif text =~ /\((\d+),\W+(\d+)\)/i
 			command[:x] = $1.to_i
 			command[:y] = $2.to_i
-		elsif text =~ /([NSEW]|[NS][EW])/i
+		elsif text =~ /\A([NSEW]|[NS][EW])\z/i
 			direction = $1.to_sym
 			command[:x] = @x + @@target_coords[direction][:dx]
 			command[:y] = @y + @@target_coords[direction][:dy]
