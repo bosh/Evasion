@@ -82,7 +82,7 @@ class Evasion
 	def hunter_trapped?
 		corners = []
 		[-1, +1].each{|dx| [-1, +1].each{|dy| corners << {:x => @hunter.x + dx, :y => @hunter.y + dy} } }
-		!(corners.map{|p| occupied? p}.include? false )
+		!(corners.map{|p| occupied?(p[:x], p[:y])}.include? false )
 	end
 
 	def players_within_distance?
