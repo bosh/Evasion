@@ -232,10 +232,10 @@ class Evasion
 	end
 
 	def remove_wall!(id) #True if wall is found for deletion
-		wall = @walls.select{|w| w.id == id}
+		wall = @walls.select{|w| w.id == id}.first
 		if wall
 			puts "Wall removed: #{id}"
-			wall.points.each{|point| @board[point[:y]][point[:x]] = :empty }
+			wall.all_points.each{|point| @board[point[:y]][point[:x]] = :empty }
 			@walls.delete(wall)
 			true
 		else
