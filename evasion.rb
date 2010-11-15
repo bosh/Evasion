@@ -221,11 +221,13 @@ class Evasion
 
 	def print_minified_board(subsection_size = 6.5)
 		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
-		mini_board = Array.new($dimensions[:y]/subsection_size)
-		mini_board.map!{|i| Array.new($dimensions[:x]/subsection_size, ".")}
+		mini_board = Array.new(($dimensions[:y]/subsection_size).ceil)
+		mini_board.map!{|i| Array.new(($dimensions[:x]/subsection_size).ceil, ".")}
 
 		@walls.each do |wall|
-			wall.all_points.each{|p| mini_board[p[:y]/subsection_size][p[:x]/subsection_size] = 'X' if p}
+			wall.all_points.each do |p|
+				mini_board[(p[:y]/subsection_size).floor][(p[:x]/subsection_size).floor] = 'X'
+			end
 		end
 		mini_board[@hunter.coords[:y]/subsection_size][@hunter.coords[:x]/subsection_size] = "H"
 		mini_board[@prey.coords[:y]/subsection_size][@prey.coords[:x]/subsection_size] = "P"
