@@ -268,7 +268,7 @@ class Evasion
 		print full_game_board.map{|c| c.join("")}.join("\n")
 	end
 
-	def print_minified_board(subsection_size = 6.5)
+	def print_minified_board(subsection_size = 10)
 		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
 		mini_board = Array.new(($dimensions[:y]/subsection_size).ceil)
 		mini_board.map!{|i| Array.new(($dimensions[:x]/subsection_size).ceil, ".")}
