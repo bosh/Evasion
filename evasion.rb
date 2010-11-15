@@ -320,6 +320,7 @@ class Player
 		place_at(x, y)
 		@cooldown = 0
 		@time_taken = 0
+		get_user
 	end
 
 	def disconnect
@@ -337,6 +338,16 @@ class Player
 	def write(text)
 		@connection.puts(text)
 		puts text
+	end
+
+	def get_user
+		if read =~ /JOIN\W+(.*?)\W*/i
+			@username = $1
+		else
+			write("Username/Join statement invalid")
+			@game.players.each{|p| p.write("Game terminated")}
+			@game.cleanup_players!
+		end
 	end
 
 	def place_at(x, y)
