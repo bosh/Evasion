@@ -89,7 +89,7 @@ class Evasion
 			print "#{@current_turn}: "
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			print_minified_board() if @current_turn%2 == 0 || @walls.size != pre_turn_wall_count
+			print_minified_board() if @current_turn%5 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
 			puts ""
 		end
@@ -268,7 +268,7 @@ class Evasion
 		print full_game_board.map{|c| c.join("")}.join("\n")
 	end
 
-	def print_minified_board(subsection_size = 6.5)
+	def print_minified_board(subsection_size = 10)
 		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
 		mini_board = Array.new(($dimensions[:y]/subsection_size).ceil)
 		mini_board.map!{|i| Array.new(($dimensions[:x]/subsection_size).ceil, ".")}
