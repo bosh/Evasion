@@ -38,7 +38,7 @@ class Evasion
 			puts @current_turn
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			# print_minified_board(10) if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
+			# print_minified_board() if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
 			puts ""
 		end
@@ -247,7 +247,14 @@ class Evasion
 		width = matrix.first.size
 		vertical = matrix.select{|row| row.include? "X"}.size
 		horizontal_walls = []
-		(0...width).each{|w| (0...height).each{|h| horizontal_walls << w if matrix[h][w] == "X" } }
+		(0...width).each do |w|
+			h = 0
+			while h < height && !horizontal_walls.include?(w)
+				horizontal_walls << w if matrix[h][w] == "X"
+				h += 1
+			end
+		end
+
 		horizontal = horizontal_walls.uniq.size
 		if (vertical.to_f)/height > 0.5 || (horizontal.to_f)/width > 0.5
 			"X"
