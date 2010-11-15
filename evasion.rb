@@ -35,8 +35,9 @@ class EvasionServer
 			ready_players = []
 			while true
 				@connections.each do |c|
-					if c.read =~ /JOIN\W+(\w+)/i
-						puts "JOIN message received: #{$1} joined a game"
+					line = c.readline
+					if line =~ /JOIN\W+(\w+)/i
+						puts "JOIN: #{$1} joined a game"
 						ready_players << {:connection => c, :user => $1.strip}
 						@connections.delete c
 					end
@@ -45,7 +46,7 @@ class EvasionServer
 						p1 = ready_players.pop
 						p2 = ready_players.pop
 						puts "\tHunter: #{p1[:user]}\n\tPrey: #{p2[:user]}"
-						new_game << Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
+						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
 						@games << new_game
 						$threads << Thread.new(new_game) do |game|
 							@results << game.play
@@ -381,7 +382,6 @@ class Player
 		place_at(x, y)
 		@cooldown = 0
 		@time_taken = 0
-		get_user
 	end
 
 	def disconnect

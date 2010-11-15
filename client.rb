@@ -17,5 +17,5 @@ while line = s.gets	# Read lines from the socket
 	game_on = true if accepted
 	accepted = true if line =~ /ACCEPTED/i
 end
-
+puts "im over it"
 s.close				# Close the socket when done
