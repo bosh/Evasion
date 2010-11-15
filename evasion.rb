@@ -2,32 +2,83 @@ require 'socket'
 
 Infinity = 1.0/0
 
+class EvasionServer
+	attr_accessor :server, :acceptor, :creator, :games, :connections, :results
+	def initialize
+		@games = []
+		@connections = []
+		@results = []
+		start_server!
+		start_acceptor!
+		start_game_creator!
+	end
+
+	def start_server!
+		@server = TCPServer.open($port)
+	end
+
+	def start_acceptor!
+		@acceptor = Thread.new() do
+			puts "ACCEPTOR ONLINE"
+			while true
+				if new_connection = @server.accept
+					@connections << new_connection
+				end
+			end
+		end
+	end
+
+	def start_game_creator!
+		@creator = Thread.new() do
+			puts "CREATOR ONLINE"
+			ready_players = []
+			while true
+				@connections.each do |c|
+					if c.read =~ /JOIN\W+(.*?)\W*/i
+						ready_players << {:connection => c, :user => $1.strip}
+						@connections.delete c
+					end
+					if ready_players.size > 1
+						p1 = ready_players.pop
+						p2 = ready_players.pop
+						new_game << Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
+						@games << new_game
+						Thread.new(new_game) do |game|
+							puts "GAME STARTED: #{game.info}"
+							@results << game.play
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
 class Evasion
 	@@game_count = 1
-	attr_accessor :server, :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn, :id
-	def initialize
-		start_server!
+	attr_accessor :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn, :id
+	def initialize(connection_one, user_one, connection_two, user_two)
 		setup_board!
-		setup_players!
+		setup_players!(connection_one, user_one, connection_two, user_two)
 		@board_history = []
 		@walls = []
 		@id = @@game_count
 		@@game_count += 1
 	end
 
-	### Methods called by the game setting itself up or by .play
-
-	def start_server!
-		@server = TCPServer.open($port)
+	def info
+		"#{@id} - Hunter: #{@hunter.username}, Prey: #{@prey.username}"
 	end
+
+	### Methods called by the game setting itself up or by .play
 
 	def setup_board!
 		@board = Array.new($dimensions[:y]){ Array.new($dimensions[:x]) {:empty} } #Remember, this is rows of Y, columns of X, thus ary[y][x]
 	end
 
-	def setup_players!
-		@hunter = Hunter.new(self, @server.accept)
-		@prey = Prey.new(self, @server.accept)
+	def setup_players!(connection_one, user_one, connection_two, user_two)
+		@hunter = Hunter.new(self, connection_one, user_one)
+		@prey = Prey.new(self, connection_two, user_two)
 	end
 
 	def play
@@ -42,9 +93,9 @@ class Evasion
 			advance_turn!
 			puts ""
 		end
-		report_winner
-		create_gif
+		result = report_winner
 		cleanup_players!
+		result
 	end
 
 	def game_parameters
@@ -57,10 +108,6 @@ class Evasion
 
 	def current_round
 		(@current_turn / 2).floor
-	end
-
-	def create_gif
-		#TODO
 	end
 
 	def is_game_over?
@@ -192,9 +239,11 @@ class Evasion
 		if reason = won_by?(:hunter)
 			@hunter.write("GAMEOVER #{current_round} WINNER HUNTER #{reason}")
 			@prey.write("GAMEOVER #{current_round} LOSER PREY #{reason}")
+			{:winner => @hunter.username, :role => "Hunter", :time => current_round, :reason => reason}
 		elsif reason = won_by?(:prey)
 			@hunter.write("GAMEOVER #{current_round} LOSER HUNTER #{reason}")
 			@prey.write("GAMEOVER #{current_round} WINNER PREY #{reason}")
+			{:winner => @prey.username, :role => "Prey", :time => current_round, :reason => reason}
 		end
 	end
 
@@ -324,9 +373,10 @@ class Player
 
 	attr_accessor :x, :y, :cooldown, :connection, :username, :game, :time_taken
 
-	def initialize(game, connection, x, y)
+	def initialize(game, connection, username, x, y)
 		@game = game
 		@connection = connection
+		@username = username
 		place_at(x, y)
 		@cooldown = 0
 		@time_taken = 0
@@ -348,16 +398,6 @@ class Player
 	def write(text)
 		@connection.puts(text)
 		puts text
-	end
-
-	def get_user
-		if read =~ /JOIN\W+(.*?)\W*/i
-			@username = $1
-		else
-			write("Username/Join statement invalid")
-			@game.players.each{|p| p.write("Game terminated")}
-			@game.cleanup_players!
-		end
 	end
 
 	def place_at(x, y)
@@ -397,8 +437,8 @@ end
 
 class Hunter < Player
 	attr_accessor :direction
-	def initialize(game, connection)
-		super(game, connection, $start_locations[:hunter][:x],$start_locations[:hunter][:y])
+	def initialize(game, connection, username)
+		super(game, connection, username, $start_locations[:hunter][:x],$start_locations[:hunter][:y])
 		write("ACCEPTED HUNTER")
 		@direction = :SE
 	end
@@ -456,8 +496,8 @@ class Hunter < Player
 end
 
 class Prey < Player
-	def initialize(game, connection)
-		super(game, connection, $start_locations[:prey][:x],$start_locations[:prey][:y])
+	def initialize(game, connection, username)
+		super(game, connection, username, $start_locations[:prey][:x],$start_locations[:prey][:y])
 		write("ACCEPTED PREY")
 	end
 
@@ -549,5 +589,4 @@ $dimensions = { :x => 500, :y => 500 }
 $cooldown = { :hunter => 25, :prey => 1}
 $wall_max = 6
 $port = 23000
-game = Evasion.new
-game.play
+server = EvasionServer.new
