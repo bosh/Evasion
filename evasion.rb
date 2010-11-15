@@ -33,6 +33,7 @@ class Evasion
 		until is_game_over?
 			puts @current_turn
 			@current_player.take_turn
+			print_board
 			advance_turn!
 			puts ""
 		end
@@ -86,18 +87,21 @@ class Evasion
 	end
 
 	def players_within_distance?
+		captured_points.include? @prey.coords
+	end
+
+	def captured_points(range = $capture_distance)
 		checked_set = []
 		current_set = [@hunter.coords]
 
 		distance = 0
-		until distance > $capture_distance || current_set.empty?
+		until distance > range || current_set.empty?
 			found_set = ((current_set.map{|c| collect_adjacent_points(c)}.flatten - checked_set) - current_set)
 			checked_set += current_set
 			current_set = found_set
 			distance += 1
 		end
-		final_set = (checked_set + current_set).reject{|p| distance(@hunter.coords,p) > $capture_distance}
-		final_set.include? @prey.coords
+		final_set = (checked_set + current_set).reject{|p| distance(@hunter.coords,p) > range}
 	end
 
 	def players_surrounded?
@@ -197,6 +201,35 @@ class Evasion
 			@board[y][x] == :wall
 		else
 			true
+		end
+	end
+
+	def print_board
+		puts "GAME BOARD AT TIME: #{@current_turn}"
+		rows = []
+		(0...$dimensions[:y]).each do |y|
+			substr = ""
+			(0...$dimensions[:x]).each do |x|
+				substr << board_status({:x => x, :y => y})
+			end
+			rows << substr
+		end
+		hunter_blob = captured_points
+		hunter_blob.each do |point|
+			rows[point[:y]][point[:x],1] = "-" if rows[point[:y]][point[:x],1] == '.'
+		end
+		print rows.join("\n")
+	end
+
+	def board_status(coords)
+		if @hunter.coords == coords
+			"H"
+		elsif @prey.coords == coords
+			"P"
+		elsif @board[coords[:y]][coords[:x]] == :wall
+			"X"
+		else
+			"."
 		end
 	end
 
