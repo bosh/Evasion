@@ -345,8 +345,8 @@ class Hunter < Player
 			command[:action] = :add
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
 			command[:points] = [$2,$3].collect do |p|
-				x,y = p.split(",").map(&:to_i)
-				{:x => x, :y => y}
+				x,y = p.split(",")
+				{:x => x.to_i, :y => y.to_i}
 			end
 			puts "Adding wall: #{command.inspect}"
 		elsif text =~ /REMOVE\W+(\d+)/
