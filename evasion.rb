@@ -18,7 +18,7 @@ class EvasionServer
 	end
 
 	def start_acceptor!
-		@acceptor = Thread.new() do
+		$threads << @acceptor = Thread.new() do
 			puts "ACCEPTOR ONLINE"
 			while true
 				if new_connection = @server.accept
@@ -29,7 +29,7 @@ class EvasionServer
 	end
 
 	def start_game_creator!
-		@creator = Thread.new() do
+		$threads << @creator = Thread.new() do
 			puts "CREATOR ONLINE"
 			ready_players = []
 			while true
@@ -43,7 +43,7 @@ class EvasionServer
 						p2 = ready_players.pop
 						new_game << Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
 						@games << new_game
-						Thread.new(new_game) do |game|
+						$threads << Thread.new(new_game) do |game|
 							puts "GAME STARTED: #{game.info}"
 							@results << game.play
 						end
@@ -581,6 +581,7 @@ class Wall
 end
 
 ### Game execution ###
+$threads = []
 $start_locations = {	:prey =>	{:x => 320,	:y => 200},
 						:hunter =>	{:x => 0,	:y => 0} }
 $time_limit = 120
@@ -590,3 +591,4 @@ $cooldown = { :hunter => 25, :prey => 1}
 $wall_max = 6
 $port = 23000
 server = EvasionServer.new
+$threads.each { |aThread|  aThread.join }
