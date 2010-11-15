@@ -38,7 +38,7 @@ class Evasion
 			puts @current_turn
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			print_minified_board(10) if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
+			# print_minified_board(10) if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
 			puts ""
 		end
