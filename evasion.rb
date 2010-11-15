@@ -225,7 +225,7 @@ class Evasion
 		mini_board.map!{|i| Array.new($dimensions[:x]/subsection_size, ".")}
 
 		@walls.each do |wall|
-			wall.all_points.each{|p| mini_board[p[:y]/subsection_size][p[:x]/subsection_size] = 'X' }
+			wall.all_points.each{|p| mini_board[p[:y]/subsection_size][p[:x]/subsection_size] = 'X' if p}
 		end
 		mini_board[@hunter.coords[:y]/subsection_size][@hunter.coords[:x]/subsection_size] = "H"
 		mini_board[@prey.coords[:y]/subsection_size][@prey.coords[:x]/subsection_size] = "P"
