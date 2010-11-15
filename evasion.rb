@@ -22,6 +22,7 @@ class EvasionServer
 			puts "ACCEPTOR ONLINE"
 			while true
 				if new_connection = @server.accept
+					puts "New connection accepted: #{new_connection}"
 					@connections << new_connection
 				end
 			end
@@ -34,17 +35,19 @@ class EvasionServer
 			ready_players = []
 			while true
 				@connections.each do |c|
-					if c.read =~ /JOIN\W+(.*?)\W*/i
+					if c.read =~ /JOIN\W+(\w+)/i
+						puts "JOIN message received: #{$1} joined a game"
 						ready_players << {:connection => c, :user => $1.strip}
 						@connections.delete c
 					end
 					if ready_players.size > 1
+						puts "Two players have requested a game, spawning new game for:"
 						p1 = ready_players.pop
 						p2 = ready_players.pop
+						puts "\tHunter: #{p1[:user]}\n\tPrey: #{p2[:user]}"
 						new_game << Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
 						@games << new_game
 						$threads << Thread.new(new_game) do |game|
-							puts "GAME STARTED: #{game.info}"
 							@results << game.play
 						end
 					end
@@ -64,10 +67,6 @@ class Evasion
 		@walls = []
 		@id = @@game_count
 		@@game_count += 1
-	end
-
-	def info
-		"#{@id} - Hunter: #{@hunter.username}, Prey: #{@prey.username}"
 	end
 
 	### Methods called by the game setting itself up or by .play
