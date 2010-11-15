@@ -35,10 +35,10 @@ class Evasion
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
-			puts @current_turn
+			print "#{@current_turn}: "
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			# print_minified_board() if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
+			print_minified_board() if @current_turn%2 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
 			puts ""
 		end
@@ -219,48 +219,18 @@ class Evasion
 		print full_game_board.map{|c| c.join("")}.join("\n")
 	end
 
-	def print_minified_board(subsection_size = 10)
+	def print_minified_board(subsection_size = 6.5)
 		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
-		board = full_game_board
-		width = full_game_board[0].size
-		height = full_game_board.size
-		subsections = []
-		y = 0
-		while y < height do
-			x = 0
-			cols = []
-			while x < width do
-				cols << (y.ceil...[(y+subsection_size).floor, $dimensions[:y]].min).map{|j| (x.ceil...[(x+subsection_size).floor, $dimensions[:x]].min).map{|i| board[j][i] } }
-				x += subsection_size
-			end
-			subsections << cols
-			y += subsection_size
-		end
-		subsections.map!{|row| row.map{|col| subsection_representative(col)}}
-		subsections[@hunter.coords[:y]/subsection_size][@hunter.coords[:x]/subsection_size] = "H"
-		subsections[@prey.coords[:y]/subsection_size][@prey.coords[:x]/subsection_size] = "P"
-		puts subsections.map{|s| s.join("")}.join("\n")
-	end
+		mini_board = Array.new($dimensions[:y]/subsection_size)
+		mini_board.map!{|i| Array.new($dimensions[:x]/subsection_size, ".")}
 
-	def subsection_representative(matrix)
-		height = matrix.size
-		width = matrix.first.size
-		vertical = matrix.select{|row| row.include? "X"}.size
-		horizontal_walls = []
-		(0...width).each do |w|
-			h = 0
-			while h < height && !horizontal_walls.include?(w)
-				horizontal_walls << w if matrix[h][w] == "X"
-				h += 1
-			end
+		@walls.each do |wall|
+			wall.all_points.each{|p| mini_board[p[:y]/subsection_size][p[:x]/subsection_size] = 'X' }
 		end
+		mini_board[@hunter.coords[:y]/subsection_size][@hunter.coords[:x]/subsection_size] = "H"
+		mini_board[@prey.coords[:y]/subsection_size][@prey.coords[:x]/subsection_size] = "P"
 
-		horizontal = horizontal_walls.uniq.size
-		if (vertical.to_f)/height > 0.5 || (horizontal.to_f)/width > 0.5
-			"X"
-		else
-			"."
-		end
+		puts mini_board.map{|s| s.join("")}.join("\n")
 	end
 
 	def full_game_board
