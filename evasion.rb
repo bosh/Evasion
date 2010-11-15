@@ -36,8 +36,9 @@ class Evasion
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
 			puts @current_turn
+			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			print_minified_board
+			print_minified_board(10) if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
 			puts ""
 		end
@@ -229,7 +230,7 @@ class Evasion
 			x = 0
 			cols = []
 			while x < width do
-				cols << (y...[y+subsection_size, $dimensions[:y]].min).map{|j| (x...[x+subsection_size, $dimensions[:x]].min).map{|i| board[j][i] } }
+				cols << (y.ceil...[(y+subsection_size).floor, $dimensions[:y]].min).map{|j| (x.ceil...[(x+subsection_size).floor, $dimensions[:x]].min).map{|i| board[j][i] } }
 				x += subsection_size
 			end
 			subsections << cols
@@ -244,10 +245,11 @@ class Evasion
 	def subsection_representative(matrix)
 		height = matrix.size
 		width = matrix.first.size
-		vertical_walls = matrix.select{|row| row.include? "X"}.size
+		vertical = matrix.select{|row| row.include? "X"}.size
 		horizontal_walls = []
 		(0...width).each{|w| (0...height).each{|h| horizontal_walls << w if matrix[h][w] == "X" } }
-		if (vertical_walls.size.to_f)/height > 0.5 || (horizontal_walls.uniq.size.to_f)/width > 0.5
+		horizontal = horizontal_walls.uniq.size
+		if (vertical.to_f)/height > 0.5 || (horizontal.to_f)/width > 0.5
 			"X"
 		else
 			"."
