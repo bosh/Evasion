@@ -31,14 +31,13 @@ class Evasion
 	end
 
 	def play
-		players.each{|p| p.get_name}
 		@current_turn = 0
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
 			puts @current_turn
 			@current_player.take_turn
-			print_board
+			print_minified_board
 			advance_turn!
 			puts ""
 		end
@@ -220,7 +219,39 @@ class Evasion
 	end
 
 	def print_minified_board(subsection_size = 10)
-		#TODO board = full_game_board
+		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
+		board = full_game_board
+		width = full_game_board[0].size
+		height = full_game_board.size
+		subsections = []
+		y = 0
+		while y < height do
+			x = 0
+			cols = []
+			while x < width do
+				cols << (y...[y+subsection_size, $dimensions[:y]].min).map{|j| (x...[x+subsection_size, $dimensions[:x]].min).map{|i| board[j][i] } }
+				x += subsection_size
+			end
+			subsections << cols
+			y += subsection_size
+		end
+		subsections.map!{|row| row.map{|col| subsection_representative(col)}}
+		subsections[@hunter.coords[:y]/subsection_size][@hunter.coords[:x]/subsection_size] = "H"
+		subsections[@prey.coords[:y]/subsection_size][@prey.coords[:x]/subsection_size] = "P"
+		puts subsections.map{|s| s.join("")}.join("\n")
+	end
+
+	def subsection_representative(matrix)
+		height = matrix.size
+		width = matrix.first.size
+		vertical_walls = matrix.select{|row| row.include? "X"}.size
+		horizontal_walls = []
+		(0...width).each{|w| (0...height).each{|h| horizontal_walls << w if matrix[h][w] == "X" } }
+		if (vertical_walls.size.to_f)/height > 0.5 || (horizontal_walls.uniq.size.to_f)/width > 0.5
+			"X"
+		else
+			"."
+		end
 	end
 
 	def full_game_board
