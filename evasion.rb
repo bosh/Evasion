@@ -1,14 +1,18 @@
 require 'socket'
+
 Infinity = 1.0/0
 
 class Evasion
-	attr_accessor :server, :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn
+	@@game_count = 1
+	attr_accessor :server, :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn, :id
 	def initialize
 		start_server!
 		setup_board!
 		setup_players!
 		@board_history = []
 		@walls = []
+		@id = @@game_count
+		@@game_count += 1
 	end
 
 	### Methods called by the game setting itself up or by .play
@@ -38,6 +42,7 @@ class Evasion
 			puts ""
 		end
 		report_winner
+		create_gif
 		cleanup_players!
 	end
 
@@ -51,6 +56,10 @@ class Evasion
 
 	def current_round
 		(@current_turn / 2).floor
+	end
+
+	def create_gif
+		#TODO
 	end
 
 	def is_game_over?
