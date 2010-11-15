@@ -31,6 +31,7 @@ class Evasion
 	end
 
 	def play
+		players.each{|p| p.get_name}
 		@current_turn = 0
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
@@ -215,19 +216,27 @@ class Evasion
 
 	def print_board
 		puts "GAME BOARD AT TIME: #{@current_turn}"
+		print full_game_board.map{|c| c.join("")}.join("\n")
+	end
+
+	def print_minified_board(subsection_size = 10)
+		#TODO board = full_game_board
+	end
+
+	def full_game_board
 		rows = []
 		(0...$dimensions[:y]).each do |y|
-			substr = ""
+			cols = []
 			(0...$dimensions[:x]).each do |x|
-				substr << board_status({:x => x, :y => y})
+				cols << board_status({:x => x, :y => y})
 			end
-			rows << substr
+			rows << cols
 		end
 		hunter_blob = captured_points
 		hunter_blob.each do |point|
-			rows[point[:y]][point[:x],1] = "-" if rows[point[:y]][point[:x],1] == '.'
+			rows[point[:y]][point[:x]] = "-" if rows[point[:y]][point[:x]] == '.'
 		end
-		print rows.join("\n")
+		rows
 	end
 
 	def board_status(coords)
