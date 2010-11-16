@@ -87,7 +87,7 @@ class Evasion
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
-			print "#{@current_turn}: "
+			# print "#{@current_turn}: "
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
 			print_minified_board() if @current_turn%5 == 0 || @walls.size != pre_turn_wall_count
@@ -328,12 +328,12 @@ class Evasion
 	def place_wall!(id, endpoints) #True if wall is created
 		wall = Wall.new(id, endpoints)
 		if can_place_wall? wall
-			puts "Wall is placeable, placing #{id}"
+			# puts "Wall is placeable, placing #{id}"
 			@walls << wall
 			wall.all_points.each{|point| @board[point[:y]][point[:x]] = :wall }
 			true
 		else
-			puts "Wall was not placeable"
+			# puts "Wall was not placeable"
 			false
 		end
 	end
@@ -347,7 +347,7 @@ class Evasion
 	def remove_wall!(id) #True if wall is found for deletion
 		wall = @walls.select{|w| w.id == id}.first
 		if wall
-			puts "Wall removed: #{id}"
+			# puts "Wall removed: #{id}"
 			wall.all_points.each{|point| @board[point[:y]][point[:x]] = :empty }
 			@walls.delete(wall)
 			true
@@ -399,7 +399,7 @@ class Player
 
 	def write(text)
 		@connection.puts(text)
-		puts text
+		# puts text
 	end
 
 	def place_at(x, y)
@@ -409,7 +409,7 @@ class Player
 
 	def bounce!	#Complete direction flip if hitting a corner, else reflection
 		@direction = @@bounce_results[@direction][bounce_type]
-		puts "Bouncing #{@direction}"
+		# puts "Bouncing #{@direction}"
 	end
 
 	def will_bounce?
@@ -451,7 +451,7 @@ class Hunter < Player
 
 	def get_command
 		text = read.chomp
-		puts text
+		# puts text
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
@@ -462,11 +462,11 @@ class Hunter < Player
 				x,y = p.split(",")
 				{:x => x.to_i, :y => y.to_i}
 			end
-			puts "Adding wall: #{command.inspect}"
+			# puts "Adding wall: #{command.inspect}"
 		elsif text =~ /REMOVE\W+(\d+)/
 			command[:action] = :remove
 			command[:id] = $1.to_i #FUTURE spec says it is 4 digits max
-			puts "Removing wall: #{command.inspect}"
+			# puts "Removing wall: #{command.inspect}"
 		end
 		command
 	end
@@ -479,7 +479,7 @@ class Hunter < Player
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
-			puts "Hunter - Time taken: #{@time_taken}"
+			# puts "Hunter - Time taken: #{@time_taken}"
 			if !command[:pass]
 				@cooldown = $cooldown[:hunter]
 				@game.change_wall(command[:action], command[:id], command[:points])
@@ -509,7 +509,7 @@ class Prey < Player
 
 	def get_command
 		text = read.chomp
-		puts text
+		# puts text
 		command = {}
 		if text =~ /PASS/i
 			command[:pass] = true
@@ -532,7 +532,7 @@ class Prey < Player
 			start_time = Time.now
 			command = get_command
 			@time_taken += Time.now - start_time
-			puts "Prey - Time taken: #{@time_taken}"
+			# puts "Prey - Time taken: #{@time_taken}"
 			if !command[:pass]
 				@cooldown = $cooldown[:prey]
 				if @game.occupied?(command[:x], command[:y])
