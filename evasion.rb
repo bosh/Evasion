@@ -19,7 +19,6 @@ class EvasionServer
 
 	def start_acceptor!
 		$threads << @acceptor = Thread.new() do
-			Thread.current.priority = 0
 			puts "ACCEPTOR ONLINE"
 			while true
 				if new_connection = @server.accept
@@ -32,7 +31,6 @@ class EvasionServer
 
 	def start_game_creator!
 		$threads << @creator = Thread.new() do
-			Thread.current.priority = 1
 			puts "CREATOR ONLINE"
 			ready_players = []
 			while true
@@ -51,7 +49,6 @@ class EvasionServer
 						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
 						@games << new_game
 						$threads << Thread.new(new_game) do |game|
-							Thread.current.priority = 10
 							@results << game.play
 						end
 					end
