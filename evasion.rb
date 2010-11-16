@@ -49,6 +49,7 @@ class EvasionServer
 						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
 						@games << new_game
 						$threads << Thread.new(new_game) do |game|
+							Thread.current.priority = 10
 							@results << game.play
 						end
 					end
