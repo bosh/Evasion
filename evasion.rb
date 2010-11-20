@@ -47,11 +47,11 @@ class EvasionServer
 						p2 = ready_players.pop
 						puts "\tHunter: #{p1[:user]}\n\tPrey: #{p2[:user]}"
 						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
-						@games << new_game
-						$threads << Thread.new(new_game) do |game|
-							Thread.current.priority = 10
-							@results << game.play
-						end
+						# @games << new_game
+						# $threads << Thread.new(new_game) do |game|
+						# 	Thread.current.priority = 10
+							@results << new_game.play # @results << game.play
+						# end
 					end
 				end
 			end
@@ -339,7 +339,7 @@ class Evasion
 	end
 
 	def can_place_wall?(wall)
-		return false if @walls.size > $wall_max
+		return false if @walls.size >= $wall_max
 		wall.points.each{|point| return false if occupied?(point[:x], point[:y]) }
 		true
 	end
