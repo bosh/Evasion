@@ -87,12 +87,11 @@ class Evasion
 		@current_player = @hunter
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
-			# print "#{@current_turn}: "
 			pre_turn_wall_count = @walls.size
 			@current_player.take_turn
-			print_minified_board() if @current_turn%5 == 0 || @walls.size != pre_turn_wall_count
+			print_minified_board() if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
-			puts ""
+			print "#{@current_turn}  "
 		end
 		result = report_winner
 		cleanup_players!
@@ -270,7 +269,7 @@ class Evasion
 	end
 
 	def print_minified_board(subsection_size = 10)
-		puts "MINIFIED GAME BOARD AT TIME: #{@current_turn}"
+		puts "\nMINIFIED GAME BOARD AT TIME: #{@current_turn}"
 		mini_board = Array.new(($dimensions[:y]/subsection_size).ceil)
 		mini_board.map!{|i| Array.new(($dimensions[:x]/subsection_size).ceil, ".")}
 
