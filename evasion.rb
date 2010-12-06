@@ -33,6 +33,7 @@ class EvasionServer
 		$threads << @creator = Thread.new() do
 			puts "CREATOR ONLINE"
 			ready_players = []
+			spectators = []
 			while true
 				@connections.each do |c|
 					line = c.readline
@@ -40,13 +41,19 @@ class EvasionServer
 						puts "JOIN: #{$1} joined a game"
 						ready_players << {:connection => c, :user => $1.strip}
 						@connections.delete c
+					elsif line =~ /SPECTATE/i
+						puts "Spectator joined"
+						spectators << c
+						@connections.delete c
 					end
 					if ready_players.size > 1
 						puts "Two players have requested a game, spawning new game for:"
 						p1 = ready_players.pop
 						p2 = ready_players.pop
+						specs = spectators.clone
+						spectators = []
 						puts "\tHunter: #{p1[:user]}\n\tPrey: #{p2[:user]}"
-						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user])
+						new_game = Evasion.new(p1[:connection], p1[:user], p2[:connection], p2[:user], specs)
 						# @games << new_game
 						# $threads << Thread.new(new_game) do |game|
 						# 	Thread.current.priority = 10
@@ -61,8 +68,9 @@ end
 
 class Evasion
 	@@game_count = 1
-	attr_accessor :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn, :id
-	def initialize(connection_one, user_one, connection_two, user_two)
+	attr_accessor :hunter, :prey, :board, :board_history, :walls, :current_player, :current_turn, :id, :spectators
+	def initialize(connection_one, user_one, connection_two, user_two, spectators)
+		@spectators = spectators
 		setup_board!
 		setup_players!(connection_one, user_one, connection_two, user_two)
 		@board_history = []
@@ -88,6 +96,7 @@ class Evasion
 		players.each{|p| p.write(game_parameters)}
 		until is_game_over?
 			pre_turn_wall_count = @walls.size
+			report_state_to_spectators
 			@current_player.take_turn
 			print_minified_board() if @current_turn%10 == 0 || @walls.size != pre_turn_wall_count
 			advance_turn!
@@ -95,6 +104,7 @@ class Evasion
 		end
 		result = report_winner
 		cleanup_players!
+		cleanup_spectators!
 		result
 	end
 
@@ -104,6 +114,11 @@ class Evasion
 
 	def game_state
 		"YOURTURN #{self.current_round} #{@hunter.to_state}, #{@prey.to_state}, W[#{@walls.map{|w| w.to_state}.join(", ")}]"
+	end
+
+	def report_state_to_spectators
+		gs = game_state
+		@spectators.each{|s| s.puts(gs)}
 	end
 
 	def current_round
@@ -237,18 +252,26 @@ class Evasion
 
 	def report_winner
 		if reason = won_by?(:hunter)
+			puts "\n\nHunter (#{@hunter.username}) wins (#{reason}) at turn #{@current_turn}\n\n"
 			@hunter.write("GAMEOVER #{current_round} WINNER HUNTER #{reason}")
 			@prey.write("GAMEOVER #{current_round} LOSER PREY #{reason}")
 			{:winner => @hunter.username, :role => "Hunter", :time => current_round, :reason => reason}
+			@spectators.each{|s| s.puts "GAMEOVER #{current_round} WINNER HUNTER #{reason}"}
 		elsif reason = won_by?(:prey)
+			puts "\n\Prey (#{@prey.username}) wins (#{reason}) at turn #{@current_turn}\n\n"
 			@hunter.write("GAMEOVER #{current_round} LOSER HUNTER #{reason}")
 			@prey.write("GAMEOVER #{current_round} WINNER PREY #{reason}")
+			@spectators.each{|s| s.puts "GAMEOVER #{current_round} WINNER PREY #{reason}"}
 			{:winner => @prey.username, :role => "Prey", :time => current_round, :reason => reason}
 		end
 	end
 
 	def cleanup_players!
 		players.each{|p| p.disconnect}
+	end
+
+	def cleanup_players!
+		@spectators.each{|s| p.close}
 	end
 
 	def players
