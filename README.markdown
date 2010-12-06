@@ -22,6 +22,11 @@ Upon joining a game, you will be welcomed with the message
 	ACCEPTED _TYPE_
 Where _TYPE_ is HUNTER or PREY
 
+You may also spectate a game (say, for a remote visualizer) by sending ONLY the message
+
+	SPECTATE
+Spectators are automatically disconnected after the game they spectate completes.
+
 Game parameters
 ---
 After both players join a game, the game begins with a parameters declaration of the form
