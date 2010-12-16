@@ -1,12 +1,31 @@
-Evasion game protocol
+Evasion
+===
+
+Installing and Running the Server
+---
+
+    1. Clone this project:
+
+        $git clone git://github.com/bosh/Evasion.git
+
+    2. Install Ruby (Recommended: 1.8.7)
+
+        Download and instructions at
+        http://www.ruby-lang.org/en/downloads/
+
+    3. Run the server
+
+        $cd Evasion/
+        $ruby evasion.rb
+
+Game Protocol
 ===
 
 Connecting to the Gameserver
 ---
-We will use access to host the server, connect to
+We will use access to host the server, connect via TCP sockets to
 
-	access#.cims.nyu.edu:23000
-Exact host and port may change as necessary, parameterize if you wish
+	_serveraddress_:_port
 
 Joining a Game
 ---
