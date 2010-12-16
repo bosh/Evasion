@@ -3,7 +3,6 @@ Evasion
 
 Installing and Running the Server
 ---
-
     1. Clone this project:
 
         $git clone git://github.com/bosh/Evasion.git
